@@ -21,6 +21,8 @@ import {
   Trash2
 } from 'lucide-react';
 
+import type { LucideIcon } from 'lucide-react';
+
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { useTheme } from '../../contexts/Theme';
@@ -90,6 +92,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     alert('Link copied!');
   };
 
+  const NAV_ITEMS: Array<{
+  key: 'dashboard' | 'portfolios' | 'templates' | 'settings';
+  icon: LucideIcon;
+  label: string;
+}> = [
+  { key: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { key: 'portfolios', icon: Briefcase, label: 'My Portfolios' },
+  { key: 'templates', icon: Palette, label: 'Templates' },
+  { key: 'settings', icon: Settings, label: 'Settings' },
+];
+
   /* =============================
      UI
      ============================= */
@@ -104,7 +117,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <h1 className="text-xl font-bold">PortfoliAI</h1>
         </div>
 
-        <nav className="flex-1 space-y-2">
+        {/* <nav className="flex-1 space-y-2">
           {[
             ['dashboard', LayoutDashboard, 'Dashboard'],
             ['portfolios', Briefcase, 'My Portfolios'],
@@ -125,7 +138,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               {label}
             </button>
           ))}
-        </nav>
+        </nav> */}
+
+        <nav className="flex-1 space-y-2">
+  {NAV_ITEMS.map(({ key, icon: Icon, label }) => (
+    <button
+      key={key}
+      onClick={() => setActiveTab(key)}
+      className={cn(
+        'w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium',
+        activeTab === key
+          ? 'bg-primary/10 text-primary'
+          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+      )}
+    >
+      <Icon size={20} />
+      {label}
+    </button>
+  ))}
+</nav>
 
         <Button
           variant="ghost"
@@ -256,6 +287,89 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
           </>
         )}
+
+
+
+{/* /**============================
+           My Portfolio Tab
+=====================================
+ */ }
+
+        {/* MY PORTFOLIOS TAB */}
+{activeTab === 'portfolios' && (
+  <>
+    <h2 className="text-3xl font-black mb-6">My Portfolios</h2>
+
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      {portfolios.map((p) => (
+        <Card
+          key={p.id}
+          className="cursor-pointer group"
+          onClick={() => onEdit(p.id)}
+        >
+          {/* SAME CARD UI AS DASHBOARD */}
+          {/* copy-paste from dashboard grid */}
+                            <div className="aspect-video bg-slate-100 relative">
+                    <img
+                      src={`https://picsum.photos/seed/${p.id}/800/450`}
+                      className="w-full h-full object-cover"
+                    />
+
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2">
+                      <Button
+                        variant="white"
+                        onClick={(e) => handleEditClick(e, p.id)}
+                      >
+                        <Edit3 size={14} /> Edit
+                      </Button>
+                      <Button
+                        variant="white"
+                        onClick={(e) => handleViewClick(e, p.id)}
+                      >
+                        <ExternalLink size={14} /> View
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="p-4 space-y-2">
+                    <h4 className="font-bold">{p.name}</h4>
+                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                      <Clock size={12} /> {p.lastEdited}
+                    </p>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-primary">
+                        {p.status.toUpperCase()}
+                      </span>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          onClick={(e) => handleCopyUrl(e, p.url)}
+                        >
+                          <Share2 size={14} />
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          className="text-red-500"
+                          onClick={(e) => handleDeleteClick(e, p.id)}
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+        </Card>
+      ))}
+    </div>
+  </>
+)}
+
+
+
+
+
       </main>
     </div>
   );
