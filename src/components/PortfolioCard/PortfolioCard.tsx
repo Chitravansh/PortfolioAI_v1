@@ -48,11 +48,11 @@ export const PortfolioCard: React.FC<PortfolioCardProps> = ({
       onClick={() => onEdit(p.id)}
     >
       {/* IMAGE SECTION */}
-      <div className="aspect-video bg-muted relative">
+        <div className="aspect-video bg-slate-50 dark:bg-slate-900 relative p-4 flex items-center justify-center border-b border-border">
         <img
-          src={`https://picsum.photos/seed/${p.id}/800/450`}
+          src={p.data?.image || `https://ui-avatars.com/api/?name=${p.name}&background=random&size=400`}
           alt={p.name}
-          className="w-full h-full object-cover"
+          className="max-w-full max-h-full object-contain drop-shadow-sm rounded-sm"
         />
         {/* Hover Overlay */}
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">

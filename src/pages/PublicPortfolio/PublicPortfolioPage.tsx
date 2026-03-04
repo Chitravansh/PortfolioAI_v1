@@ -93,9 +93,10 @@ export const PublicPortfolioPage: React.FC<PublicPortfolioPageProps> = ({
         {/* Hero */}
         <section className="text-center space-y-6 print:space-y-3">
           <div className="size-32 rounded-full bg-slate-200 dark:bg-slate-800 mx-auto overflow-hidden border-4 border-card shadow-xl">
-            <img
-              src={`https://i.pravatar.cc/150?u=${data.contact.email}`}
+<img
+              src={data.image || `https://ui-avatars.com/api/?name=${data.name}&background=random&size=150`}
               alt={data.name}
+              className="w-full h-full object-cover"
             />
           </div>
           <div className="space-y-2">

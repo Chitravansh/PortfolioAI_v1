@@ -4,6 +4,7 @@ export interface PortfolioData {
   name: string;
   role: string;
   about: string;
+  image?: string;
   experience: {
     company: string;
     role: string;

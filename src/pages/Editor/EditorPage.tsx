@@ -196,6 +196,42 @@ export const EditorPage: React.FC<EditorPageProps> = ({
           <section className="space-y-4">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Content</h3>
             <div className="space-y-4">
+              {/* 👇 NEW PORTFOLIO IMAGE UPLOAD 👇 */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-slate-400">Portfolio Profile Picture</label>
+
+                  <div className="flex items-center gap-3">
+                  {/* 👇 NEW THUMBNAIL PREVIEW 👇 */}
+                  {data.image && (
+                    <div className="shrink-0 size-10 rounded-full border border-border overflow-hidden bg-slate-100 dark:bg-slate-800">
+                      <img 
+                        src={data.image} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover" 
+                      />
+                    </div>
+                  )}
+                  {/* 👆 END THUMBNAIL PREVIEW 👆 */}     
+                  </div>           
+                
+                
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        onDataChange({ ...data, image: reader.result as string });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                />
+              </div>
+              {/* 👆 END PORTFOLIO IMAGE UPLOAD 👆 */}
               <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase text-slate-400">Name</label>
                 <input 
