@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowRight, Sliders, Sun, Moon, Check, Plus, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowRight, Sliders, Sun, Moon, Check, Plus, X, Loader2, Save, Globe } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useTheme } from '../../contexts/Theme';
 import { cn } from '../../lib/utils';
@@ -8,21 +8,51 @@ import { PortfolioData } from '../../services/geminiService';
 interface EditorPageProps {
   data: PortfolioData | null;
   theme: string;
+  initialSlug: string;
   onThemeChange: (theme: string) => void;
   onDataChange: (data: PortfolioData) => void;
-  onSave: (data: PortfolioData, theme: string) => void;
+  onSave: (data: PortfolioData, theme: string, status: 'draft' | 'active', slug: string) => void;
   onBack: () => void;
 }
 
 export const EditorPage: React.FC<EditorPageProps> = ({ 
   data, 
   theme: selectedTheme, 
+  initialSlug,
   onThemeChange, 
   onDataChange,
   onSave,
   onBack
 }) => {
   const { theme, toggleTheme } = useTheme();
+
+  const [slug, setSlug] = useState(initialSlug || '');
+  const [isSlugAvailable, setIsSlugAvailable] = useState<boolean | null>(null);
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
+
+// Start of Slug Logic
+  useEffect(() => {
+    if (!slug || slug === initialSlug) {
+      setIsSlugAvailable(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsCheckingSlug(true);
+      try {
+        const res = await fetch(`/api/slug/check/${slug}`);
+        const result = await res.json();
+        setIsSlugAvailable(result.available);
+      } catch (error) {
+        console.error("Error checking slug", error);
+      } finally {
+        setIsCheckingSlug(false);
+      }
+    }, 500); 
+
+    return () => clearTimeout(timer);
+  }, [slug, initialSlug]);
+  // 👆 END OF NEW SLUG LOGIC
 
   if (!data) {
     return (
@@ -42,7 +72,8 @@ export const EditorPage: React.FC<EditorPageProps> = ({
   return (
     <div className="flex h-screen bg-background">
       <aside className="w-80 border-r border-border bg-card flex flex-col">
-        <div className="p-6 border-b border-border flex items-center justify-between">
+
+        {/* <div className="p-6 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button variant="ghost" className="p-2" onClick={onBack}><ArrowRight className="rotate-180" size={20} /></Button>
             <h2 className="font-bold">Editor</h2>
@@ -55,8 +86,87 @@ export const EditorPage: React.FC<EditorPageProps> = ({
               onSave(data, selectedTheme);
             }}>Publish</Button>
           </div>
+        </div> */}
+
+        {/* NEW HEADER WITH DRAFT/PUBLISH */}
+        <div className="p-4 border-b border-border flex flex-col gap-4 bg-slate-50/50 dark:bg-slate-900/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" className="p-2" onClick={onBack}>
+                <ArrowRight className="rotate-180" size={20} />
+              </Button>
+              <h2 className="font-bold">Editor</h2>
+            </div>
+            <Button variant="ghost" className="p-2 rounded-full" onClick={toggleTheme}>
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </Button>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-2">
+            <Button 
+              variant="secondary" 
+              className="text-xs font-bold gap-2"
+              disabled={isSlugAvailable === false}
+              onClick={() => onSave(data, selectedTheme, 'draft', slug || initialSlug)}
+            >
+              <Save size={14} /> Draft
+            </Button>
+            <Button 
+              className="text-xs font-bold gap-2 bg-green-600 hover:bg-green-700 text-white"
+              disabled={isSlugAvailable === false}
+              onClick={() => onSave(data, selectedTheme, 'active', slug || initialSlug)}
+            >
+              <Globe size={14} /> Publish
+            </Button>
+          </div>
         </div>
+
         <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          {/* 👇 NEW PUBLIC URL EDITOR 👇 */}
+          <section className="space-y-4">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Public URL</h3>
+            <div className="space-y-2">
+              <div className="flex items-center bg-slate-50 dark:bg-slate-800 border border-border rounded-lg px-3 py-2 focus-within:ring-2 ring-primary/20 transition-all">
+                <span className="text-slate-400 text-xs hidden xl:block mr-1">/view/</span>
+                <input 
+                  type="text" 
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  placeholder="custom-slug"
+                  className="bg-transparent border-none outline-none text-sm font-semibold flex-1 min-w-0 placeholder:text-slate-300"
+                />
+                {/* <div className="w-5 flex justify-center ml-2 shrink-0">
+                  {isCheckingSlug ? (
+                    <Loader2 size={14} className="text-slate-400 animate-spin" />
+                  ) : isSlugAvailable === true ? (
+                    <Check size={14} className="text-green-500" title="Available" />
+                  ) : isSlugAvailable === false ? (
+                    <X size={14} className="text-red-500" title="Taken" />
+                  ) : null}
+                </div> */}
+                <div 
+                  className="w-5 flex justify-center ml-2 shrink-0"
+                  title={
+                    isCheckingSlug ? "Checking availability..." : 
+                    isSlugAvailable === true ? "Available!" : 
+                    isSlugAvailable === false ? "Taken" : ""
+                  }
+                >
+                  {isCheckingSlug ? (
+                    <Loader2 size={14} className="text-slate-400 animate-spin" />
+                  ) : isSlugAvailable === true ? (
+                    <Check size={14} className="text-green-500" />
+                  ) : isSlugAvailable === false ? (
+                    <X size={14} className="text-red-500" />
+                  ) : null}
+                </div>
+              </div>
+              {isSlugAvailable === false && (
+                <p className="text-[10px] text-red-500 font-bold">This slug is already taken.</p>
+              )}
+            </div>
+          </section>
+          {/* 👆 END OF PUBLIC URL EDITOR 👆 */}
           <section className="space-y-4">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Template</h3>
             <div className="grid grid-cols-2 gap-3">

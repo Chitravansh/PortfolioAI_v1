@@ -5,6 +5,9 @@ import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
+// Add this inside server.ts near the top, if not already there
+import crypto from "crypto";
+import slugify from "slugify";
 
 dotenv.config();
 
@@ -20,6 +23,24 @@ mongoose
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
+/**======================================================
+                      Helper Function 
+     ======================================================*/
+
+const generateUniqueSlug = async (name: string) => {
+  const baseSlug = slugify(name, { lower: true, strict: true });
+
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (await Portfolio.findOne({ slug })) {
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+
+  return slug;
+};
+
 /* ======================================================
    Schemas & Models
    ====================================================== */
@@ -33,7 +54,7 @@ const userSchema = new mongoose.Schema(
     googleId: { type: String },
     githubId: { type: String },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Portfolios collection
@@ -50,10 +71,16 @@ const portfolioSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["draft", "active"], // 👈 explicit states
-      default: "draft",          // 👈 IMPORTANT: new portfolios start as draft
+      default: "draft", // 👈 IMPORTANT: new portfolios start as draft
+    },
+    slug: {
+      // <--- ADD THIS
+      type: String,
+      unique: true,
+      sparse: true, // allows multiple nulls for drafts
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const User = mongoose.model("User", userSchema);
@@ -120,11 +147,9 @@ async function startServer() {
         name,
       });
 
-      const token = jwt.sign(
-        { id: user._id, email: user.email },
-        JWT_SECRET,
-        { expiresIn: "7d" }
-      );
+      const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, {
+        expiresIn: "7d",
+      });
 
       res.status(201).json({
         user: { id: user._id, email: user.email, name: user.name },
@@ -161,7 +186,7 @@ async function startServer() {
         const token = jwt.sign(
           { id: user._id, email: user.email },
           JWT_SECRET,
-          { expiresIn: "7d" }
+          { expiresIn: "7d" },
         );
 
         return res.json({
@@ -183,11 +208,9 @@ async function startServer() {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      const token = jwt.sign(
-        { id: user._id, email: user.email },
-        JWT_SECRET,
-        { expiresIn: "7d" }
-      );
+      const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, {
+        expiresIn: "7d",
+      });
 
       res.json({
         user: { id: user._id, email: user.email, name: user.name },
@@ -224,12 +247,15 @@ async function startServer() {
         return res.status(400).json({ error: "Invalid portfolio data" });
       }
 
+      const slug = await generateUniqueSlug(name);
+
       const portfolio = await Portfolio.create({
         userId: req.user.id,
         name,
         data,
         template: template || "Modern",
         status: "draft", // 👈 IMPORTANT: start as draft
+        slug,
       });
 
       res.json({ success: true, portfolio });
@@ -241,17 +267,44 @@ async function startServer() {
   // UPDATE portfolio (autosave OR publish)
   app.put("/api/portfolios/:id", authenticateToken, async (req: any, res) => {
     const { id } = req.params;
-    const { name, data, template, status } = req.body;
+    const { name, data, template, status, slug } = req.body;
 
     try {
       // Only update fields that are provided
-      const update: any = { name, data, template };
-      if (status) update.status = status;
+      const update: any = {};
+
+      if (name) update.name = name;
+      if (data) update.data = data;
+      if (template) update.template = template;
+      //if (status) update.status = status;
+
+      if (status) {
+        update.status = status;
+
+        if (status === "active") {
+          // update.slug = crypto.randomBytes(6).toString("hex");
+          update.status = status;
+        }
+      }
+
+      //Slug
+
+      if (slug) {
+        const cleanSlug = slugify(slug, { lower: true, strict: true });
+
+        const existing = await Portfolio.findOne({ slug: cleanSlug });
+
+        if (existing && existing._id.toString() !== id) {
+          return res.status(409).json({ error: "Slug already taken" });
+        }
+
+        update.slug = cleanSlug;
+      }
 
       const portfolio = await Portfolio.findOneAndUpdate(
         { _id: id, userId: req.user.id }, // ownership check
         update,
-        { new: true }
+        { new: true },
       );
 
       if (!portfolio) {
@@ -265,41 +318,94 @@ async function startServer() {
   });
 
   // DELETE portfolio
-  app.delete("/api/portfolios/:id", authenticateToken, async (req: any, res) => {
-    try {
-      const deleted = await Portfolio.findOneAndDelete({
-        _id: req.params.id,
-        userId: req.user.id,
-      });
+  app.delete(
+    "/api/portfolios/:id",
+    authenticateToken,
+    async (req: any, res) => {
+      try {
+        const deleted = await Portfolio.findOneAndDelete({
+          _id: req.params.id,
+          userId: req.user.id,
+        });
 
-      if (!deleted) {
-        return res.status(404).json({ error: "Portfolio not found" });
+        if (!deleted) {
+          return res.status(404).json({ error: "Portfolio not found" });
+        }
+
+        res.json({ success: true });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
       }
-
-      res.json({ success: true });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
+    },
+  );
 
   /* ======================================================
-     PUBLIC ROUTE (NO AUTH)
+     PUBLIC ROUTE (NO AUTH) - UPDATED TO USE SLUG
      ====================================================== */
 
   // Public portfolio (shareable link)
-  app.get("/api/public/portfolio/:id", async (req, res) => {
-    try {
-      const portfolio = await Portfolio.findById(req.params.id)
-        .select("name data template createdAt"); // 👈 expose only safe fields
+  // app.get("/api/public/portfolio/:slug", async (req, res) => {
+  //   try {
+  //     const portfolio = await Portfolio.findOne({
+  //       slug: req.params.slug,
+  //       status: "active",
+  //     }).select("name data template createdAt"); // 👈 expose only safe fields
 
-      if (!portfolio || portfolio.status !== "active") {
-        return res.status(404).json({ error: "Portfolio not found" });
+  //     if (!portfolio || portfolio.status !== "active") {
+  //       return res.status(404).json({ error: "Portfolio not found" });
+  //     }
+
+  //     res.json(portfolio);
+  //   } catch (err: any) {
+  //     res.status(500).json({ error: err.message });
+  //   }
+  // });
+
+
+        // Public portfolio (shareable link)
+app.get("/api/public/portfolio/:slug", async (req, res) => {
+  try {
+    const requestedSlug = req.params.slug.trim();
+    console.log(`[API] 🔍 Searching for portfolio with slug: "${requestedSlug}"`);
+
+    const portfolio = await Portfolio.findOne({
+      slug: requestedSlug,
+      status: "active",
+    }).select("name data template createdAt");
+
+    if (!portfolio) {
+      console.log(`[API] ❌ No ACTIVE portfolio found for: "${requestedSlug}"`);
+      
+      // Diagnostic check: Does it exist but as a draft?
+      const draftCheck = await Portfolio.findOne({ slug: requestedSlug });
+      if (draftCheck) {
+        console.log(`[API] ⚠️ Found it, but status is "${draftCheck.status}"!`);
+      } else {
+        console.log(`[API] 👻 Document does not exist in this database at all.`);
       }
 
-      res.json(portfolio);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      return res.status(404).json({ error: "Portfolio not found or is currently a draft" });
     }
+
+    console.log(`[API] ✅ Success! Sending: ${portfolio.name}`);
+    res.json(portfolio);
+  } catch (err: any) {
+    console.error(`[API] 🔥 Server Error:`, err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+  //Checking slug availbilty
+
+  app.get("/api/slug/check/:slug", async (req, res) => {
+    const slug = slugify(req.params.slug, { lower: true, strict: true });
+
+    const exists = await Portfolio.findOne({ slug });
+
+    res.json({
+      available: !exists,
+      slug
+    });
   });
 
   /* ======================================================

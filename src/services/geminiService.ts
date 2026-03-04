@@ -18,6 +18,7 @@ export interface PortfolioData {
   skills: string[];
   contact: {
     email: string;
+    phone?: string;
     location: string;
     github?: string;
     linkedin?: string;
@@ -92,6 +93,11 @@ export const analyzeResume = async (text: string): Promise<PortfolioData> => {
       }
     }
   });
+
+  if(!response.text){
+    console.error("Gemini returned empty response ", response);
+    throw new Error("Ai returned empty response");
+  }
 
   console.log("Raw AI Response:", response.text);
   const jsonStr = response.text.trim();

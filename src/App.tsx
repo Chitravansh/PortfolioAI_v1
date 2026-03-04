@@ -22,6 +22,7 @@ export interface Portfolio {
   name: string;
   data: PortfolioData;
   theme: string;
+  slug: string; 
   status: 'draft' | 'active'; // IMPORTANT: draft vs published
   lastEdited: string;
   url: string;
@@ -33,6 +34,16 @@ export interface Portfolio {
 
 const AppContent: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
+
+  const navigateTo = (newView: typeof view) => {
+  setView(newView);
+  // Optional: Clean the URL when moving to private pages
+  if (newView === 'dashboard') {
+    window.history.pushState({}, '', '/dashboard');
+  } else if (newView === 'landing') {
+    window.history.pushState({}, '', '/');
+  }
+};
 
   /* --------------------
      App State
@@ -46,10 +57,161 @@ const AppContent: React.FC = () => {
 
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
   const [selectedTheme, setSelectedTheme] = useState('Modern');
+  const [selectedSlug, setSelectedSlug] = useState<string>('');
 
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState('Initializing...');
   const [error, setError] = useState<string | null>(null);
+
+
+  /* ======================================================
+   URL ROUTING LOGIC (for deep-linking)
+   ====================================================== */
+// useEffect(() => {
+//   const path = window.location.pathname;
+  
+//   // Check if the URL is a public view link
+//   if (path.startsWith('/view/')) {
+//     const slug = path.split('/view/')[1];
+//     if (slug) {
+//       handleLoadPublicPortfolio(slug);
+//     }
+//   }
+// }, []);
+
+/* ======================================================
+     1. INITIAL ROUTE CHECK (Runs ONCE on boot)
+     ====================================================== */
+  // useEffect(() => {
+  //   const initApp = async () => {
+  //     const path = window.location.pathname;
+
+  //     if (path.startsWith('/view/')) {
+  //       const slug = path.split('/view/')[1];
+  //       if (slug) {
+  //         await handleLoadPublicPortfolio(slug);
+  //         return; // Exit early so it doesn't default to landing
+  //       }
+  //     }
+
+  //     // If no public slug, check auth
+  //     if (isAuthenticated) {
+  //       setView('dashboard');
+  //     } else {
+  //       setView('landing');
+  //     }
+  //   };
+
+  //   initApp();
+  // }, []); // Only runs on mount
+
+
+  useEffect(() => {
+    const initApp = async () => {
+      const path = window.location.pathname;
+
+      if (path.startsWith('/view/')) {
+        // Grab the slug and strip out any trailing slashes or spaces
+        const rawSlug = path.split('/view/')[1];
+        const cleanSlug = rawSlug?.split('/')[0]?.trim(); 
+        
+        if (cleanSlug) {
+          await handleLoadPublicPortfolio(cleanSlug);
+          return; 
+        }
+      }
+
+      if (isAuthenticated) {
+        setView('dashboard');
+      } else {
+        setView('landing');
+      }
+    };
+
+    initApp();
+  }, []);
+
+// const handleLoadPublicPortfolio = async (slug: string) => {
+//   setView('scanning'); // Show a loader while fetching
+//   setStatus('Loading public portfolio...');
+  
+//   try {
+//     const res = await fetch(`/api/public/portfolio/${slug}`);
+//     if (!res.ok) throw new Error('Portfolio not found or private');
+    
+//     const result = await res.json();
+    
+//     // Set the data so the PublicPortfolioPage can render it
+//     setPortfolioData(result.data);
+//     setSelectedTheme(result.template || 'Modern');
+//     setView('public');
+//   } catch (err: any) {
+//     console.error(err);
+//     setError(err.message);
+//     console.error(err);
+//     // If it fails, send them to landing after a delay
+//     setTimeout(() => setView('landing'), 2000);
+//   }
+// };
+
+// const handleLoadPublicPortfolio = async (slug: string) => {
+//   setView('scanning'); // Show a loader while fetching
+//   setStatus('Loading public portfolio...');
+//   setError(null);
+  
+//   try {
+//     const res = await fetch(`/api/public/portfolio/${slug}`);
+    
+//     if (!res.ok) {
+//       throw new Error('Portfolio is either a draft or does not exist.');
+//     }
+    
+//     const result = await res.json();
+    
+//     // Set the data so the PublicPortfolioPage can render it
+//     setPortfolioData(result.data ? result.data : result); 
+//     setSelectedTheme(result.template || 'Modern');
+//     setView('public');
+//   } catch (err: any) {
+//     console.error("Public Fetch Error:", err);
+//     setError(err.message);
+    
+//     // Wait 3 seconds so you can ACTUALLY see the error on screen, 
+//     // then send them to the landing page.
+//     setTimeout(() => {
+//       setView('landing');
+//       window.history.pushState({}, '', '/');
+//     }, 3000);
+//   }
+// };
+
+    const handleLoadPublicPortfolio = async (slug: string) => {
+    setView('scanning'); 
+    setStatus('Loading public portfolio...');
+    setError(null);
+    
+    try {
+      const res = await fetch(`/api/public/portfolio/${slug}`);
+      
+      if (!res.ok) {
+        throw new Error('Portfolio is either a draft or does not exist.');
+      }
+      
+      const result = await res.json();
+      
+      setPortfolioData(result.data ? result.data : result); 
+      setSelectedTheme(result.template || 'Modern');
+      setView('public');
+    } catch (err: any) {
+      console.error("Public Fetch Error:", err);
+      setError(err.message);
+      
+      setTimeout(() => {
+        setView('landing');
+        window.history.pushState({}, '', '/');
+      }, 3000);
+    }
+  };
 
   /* ======================================================
      FETCH PORTFOLIOS (JWT ONLY)
@@ -77,8 +239,10 @@ const AppContent: React.FC = () => {
           data: p.data,
           theme: p.template || 'Modern',
           status: p.status,
+          // ✅ ADD THIS LINE
+             slug: p.slug,
           lastEdited: new Date(p.updatedAt).toLocaleDateString(),
-          url: `/portfolio/${p._id}`,      // ✅ public share link
+         url: `/view/${p.slug}`,     // ✅ public share link
         }))
       );
     } catch (err) {
@@ -95,14 +259,21 @@ const AppContent: React.FC = () => {
      AUTH ↔ VIEW SYNC
      ====================================================== */
   useEffect(() => {
+
+    if (window.location.pathname.startsWith('/view/')) {
+      return; 
+    } 
+
     if (isAuthenticated && (view === 'landing' || view === 'auth')) {
       setView('dashboard');
     }
 
-    if (!isAuthenticated && ['dashboard', 'editor', 'public'].includes(view)) {
+    if (!isAuthenticated && ['dashboard', 'editor'].includes(view)) {
       setView('landing');
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated,view]);
+
+
 
   /* ======================================================
      RESUME UPLOAD → AI ANALYSIS
@@ -164,58 +335,104 @@ const AppContent: React.FC = () => {
     return () => clearInterval(interval);
   }, [portfolioData, selectedTheme, selectedPortfolioId]);
 
+  // /* ======================================================
+  //    PUBLISH PORTFOLIO
+  //    FIX: PUT + status=active
+  //    ====================================================== */
+  // const handleSave = async (data: PortfolioData, theme: string) => {
+  //   try {
+  //     const token = localStorage.getItem('token');
+  //     if (!token) throw new Error('Not authenticated');
+
+  //     // If editing existing → UPDATE
+  //     if (selectedPortfolioId) {
+  //       await fetch(`/api/portfolios/${selectedPortfolioId}`, {
+  //         method: 'PUT',
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //         body: JSON.stringify({
+  //           name: `${data.name}'s Portfolio`,
+  //           data,
+  //           template: theme,
+  //           status: 'active', // ✅ publish
+  //         }),
+  //       });
+  //     }
+  //     // If new portfolio → CREATE
+  //     else {
+  //       const res = await fetch('/api/portfolios', {
+  //         method: 'POST',
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //         body: JSON.stringify({
+  //           name: `${data.name}'s Portfolio`,
+  //           data,
+  //           template: theme,
+  //         }),
+  //       });
+
+  //       const result = await res.json();
+  //       setSelectedPortfolioId(result.portfolio._id);
+  //     }
+
+  //     await fetchPortfolios();
+  //     alert('Portfolio published successfully!');
+  //     setView('dashboard');
+  //     setPortfolioData(null);
+  //     setSelectedPortfolioId(null);
+  //   } catch (err) {
+  //     console.error(err);
+  //     alert('Failed to publish portfolio');
+  //   }
+  // };
+
   /* ======================================================
-     PUBLISH PORTFOLIO
-     FIX: PUT + status=active
+     PUBLISH / SAVE DRAFT PORTFOLIO
      ====================================================== */
-  const handleSave = async (data: PortfolioData, theme: string) => {
+  const handleSave = async (data: PortfolioData, theme: string, status: 'draft' | 'active', customSlug: string) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('Not authenticated');
 
-      // If editing existing → UPDATE
+      const payload = {
+        name: `${data.name}'s Portfolio`,
+        data,
+        template: theme,
+        status, // 'draft' or 'active'
+        slug: customSlug, // Send the custom slug
+      };
+
       if (selectedPortfolioId) {
+        // UPDATE
         await fetch(`/api/portfolios/${selectedPortfolioId}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: `${data.name}'s Portfolio`,
-            data,
-            template: theme,
-            status: 'active', // ✅ publish
-          }),
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
         });
-      }
-      // If new portfolio → CREATE
-      else {
+      } else {
+        // CREATE
         const res = await fetch('/api/portfolios', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: `${data.name}'s Portfolio`,
-            data,
-            template: theme,
-          }),
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(payload),
         });
-
         const result = await res.json();
         setSelectedPortfolioId(result.portfolio._id);
       }
 
       await fetchPortfolios();
-      alert('Portfolio published successfully!');
+      alert(`Portfolio ${status === 'active' ? 'published' : 'saved as draft'} successfully!`);
       setView('dashboard');
       setPortfolioData(null);
       setSelectedPortfolioId(null);
+      setSelectedSlug(''); // Reset slug
     } catch (err) {
       console.error(err);
-      alert('Failed to publish portfolio');
+      alert('Failed to save portfolio');
     }
   };
 
@@ -283,6 +500,7 @@ const AppContent: React.FC = () => {
                 setSelectedPortfolioId(p.id);
                 setPortfolioData(p.data);
                 setSelectedTheme(p.theme);
+                setSelectedSlug(p.slug || '');
                 setView('editor');
               }}
               onView={(id) => {
@@ -293,6 +511,8 @@ const AppContent: React.FC = () => {
                 setPortfolioData(p.data);
                 setSelectedTheme(p.theme);
                 setView('public');
+
+                window.history.pushState({}, '', `/view/${p.slug}`);
               }}
 
               onDelete={handleDeletePortfolio}
@@ -306,6 +526,7 @@ const AppContent: React.FC = () => {
             <EditorPage
               data={portfolioData}
               theme={selectedTheme}
+              initialSlug={selectedSlug}
               onThemeChange={setSelectedTheme}
               onDataChange={setPortfolioData}
               onSave={handleSave}
@@ -319,7 +540,15 @@ const AppContent: React.FC = () => {
             <PublicPortfolioPage
               data={portfolioData}
               theme={selectedTheme}
-              onBack={() => setView('dashboard')}
+              onBack={() => {
+        if (isAuthenticated) {
+          setView('dashboard');
+          window.history.pushState({}, '', '/dashboard');
+        } else {
+          setView('landing');
+          window.history.pushState({}, '', '/');
+        }
+      }}
             />
           </motion.div>
         )}
