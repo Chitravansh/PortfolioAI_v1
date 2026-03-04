@@ -1,14 +1,17 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react'; // 👈 Added useEffect here
 
 interface User {
   id: string;
   email: string;
   name: string;
+  profilePicture?: string;
 }
 
 interface LoginPayload {
   email: string;
   name?: string;
+  password?: string;
+
 }
 
 interface AuthContextType {
@@ -25,6 +28,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedUser = localStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
+
+  // 👇 ADDED THIS: The listener for the Google/GitHub Popup 👇
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Check if the message is our success signal from the server
+      if (event.data?.type === 'OAUTH_SUCCESS' && event.data?.token) {
+        // Save the JWT token
+        localStorage.setItem('token', event.data.token);
+        localStorage.setItem('user', JSON.stringify(event.data.user));
+        
+        // Reload the page so the app recognizes the user is now logged in!
+        window.location.href = '/'; 
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+  // 👆 END OF NEW LISTENER 👆
 
   const login = async ({ email, name }: LoginPayload) => {
     const response = await fetch('/api/auth/login', {

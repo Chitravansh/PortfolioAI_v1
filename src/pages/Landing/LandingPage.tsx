@@ -5,6 +5,8 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { useTheme } from '../../contexts/Theme';
 
+import landingPage from '../../assets/images/landingPage.png';
+
 interface LandingPageProps {
   onStart: () => void;
 }
@@ -66,7 +68,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
           className="mt-8 w-full max-w-5xl aspect-video rounded-2xl overflow-hidden shadow-2xl border border-primary/10"
         >
           <img 
-            src="https://picsum.photos/seed/portfolio/1920/1080" 
+            src={landingPage}
             alt="Portfolio Preview" 
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"

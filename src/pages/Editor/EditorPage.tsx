@@ -202,7 +202,7 @@ export const EditorPage: React.FC<EditorPageProps> = ({
                   type="text" 
                   value={data.name} 
                   onChange={(e) => updateData('name', e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-border rounded-lg px-3 py-2 text-sm"
+                  className="w-full bg-slate-50  dark:bg-slate-800 border border-border rounded-lg px-3 py-2 text-sm"
                 />
               </div>
               <div className="space-y-1">

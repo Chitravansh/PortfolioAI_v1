@@ -566,7 +566,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <p className="text-sm font-bold leading-none">{user?.name}</p>
                 <p className="text-[10px] text-slate-500">{user?.email}</p>
               </div>
-              <img src={`https://i.pravatar.cc/150?u=${user?.email}`} className="size-9 rounded-full border-2 border-primary/10" alt="avatar" />
+              {/* <img src={`https://i.pravatar.cc/150?u=${user?.email}`} className="size-9 rounded-full border-2 border-primary/10" alt="avatar" /> */}
+              <img 
+              src={user?.profilePicture || `https://ui-avatars.com/api/?name=${user?.name}&background=random`} 
+              alt={user?.name} 
+              className="size-9 rounded-full border-2 border-primary/10"
+              />
             </div>
           </div>
         </header>
