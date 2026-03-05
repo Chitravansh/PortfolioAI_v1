@@ -12,6 +12,7 @@ import { ScanningOverlay } from './components/ScanningOverlay';
 
 import { extractTextFromFile } from './lib/fileParser';
 import { analyzeResume, PortfolioData } from './services/geminiService';
+import { OAuthCallback } from './pages/OAuth/OAuthCallback';
 
 /* ======================================================
    Types
@@ -34,6 +35,10 @@ export interface Portfolio {
 
 const AppContent: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
+
+  if (window.location.pathname === '/oauth-callback') {
+    return <OAuthCallback />;
+  } 
 
   const navigateTo = (newView: typeof view) => {
   setView(newView);

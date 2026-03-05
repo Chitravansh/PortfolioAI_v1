@@ -527,7 +527,7 @@
  *   Version 2
  =============================================*/
 
- import React, { useState } from 'react';
+ import React, { useState , useEffect} from 'react';
 import { Sparkles, Camera, ArrowLeft, Eye, EyeOff, Github } from 'lucide-react'; // 👈 Added Github icon
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../contexts/Auth';
@@ -647,6 +647,24 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onAuth }) => {
       setIsLoading(false);
     }
   };
+
+  /* ======================================================
+     OAUTH STORAGE LISTENER (The Popup Receiver)
+     ====================================================== */
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      // If the popup window just saved a new token to localStorage...
+      if (e.key === 'token' && e.newValue) {
+        // Force reload so AuthContext picks up the new user instantly
+        window.location.reload(); 
+        onAuth(); // Tell App.tsx to switch to the dashboard
+      }
+    };
+
+    // Listen to storage changes across all tabs/windows
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [onAuth]);
 
   const handleSocialLogin = async (provider: string) => {
     setIsLoading(true);
