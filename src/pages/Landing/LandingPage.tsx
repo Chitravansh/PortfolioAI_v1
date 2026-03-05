@@ -8,7 +8,7 @@ import { useTheme } from '../../contexts/Theme';
 import landingPage from '../../assets/images/landingPage.png';
 
 interface LandingPageProps {
-  onStart: () => void;
+  onStart: (mode?: 'login' | 'register') => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
@@ -33,8 +33,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             <Button variant="ghost" className="p-2 rounded-full" onClick={toggleTheme}>
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </Button>
-            <Button onClick={onStart}>Get Started</Button>
-            <Button variant="secondary" onClick={onStart}>Log In</Button>
+            <Button onClick={() => onStart('register')}>Get Started</Button>
+            <Button variant="secondary" onClick={() =>onStart('login')}>Log In</Button>
           </div>
         </div>
       </header>
@@ -54,7 +54,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
         </motion.div>
 
         <div className="flex flex-col md:flex-row gap-4 w-full justify-center">
-          <Button className="h-14 px-10 text-lg" onClick={onStart}>
+          <Button className="h-14 px-10 text-lg" onClick={()=>onStart('login')}>
             <Upload size={24} />
             Upload Resume
           </Button>

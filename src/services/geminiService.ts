@@ -5,6 +5,7 @@ export interface PortfolioData {
   role: string;
   about: string;
   image?: string;
+  color?: string;
   experience: {
     company: string;
     role: string;

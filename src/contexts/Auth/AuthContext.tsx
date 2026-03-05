@@ -19,6 +19,7 @@ interface AuthContextType {
   login: (payload: LoginPayload) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  updateUser: (newUser: User, newToken: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,6 +29,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedUser = localStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
+
+  const updateUser = (newUser: User, newToken: string) => {
+    setUser(newUser);
+    localStorage.setItem('user', JSON.stringify(newUser));
+    localStorage.setItem('token', newToken);
+  };
 
   // 👇 ADDED THIS: The listener for the Google/GitHub Popup 👇
   useEffect(() => {
@@ -80,6 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         isAuthenticated: !!user,
+        updateUser,
       }}
     >
       {children}

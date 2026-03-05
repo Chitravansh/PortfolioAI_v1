@@ -392,7 +392,9 @@ import {
   Search,
   Sun,
   Moon,
-  Trash2
+  Trash2,
+  X, // 👈 New icon for closing the modal
+  ArrowRight // 👈 New icon for the modal buttons
 } from 'lucide-react';
 
 import type { LucideIcon } from 'lucide-react';
@@ -403,7 +405,8 @@ import { useAuth } from '../../contexts/Auth';
 import { cn } from '../../lib/utils';
 import { Portfolio } from '../../App';
 import { PortfolioCard } from '@/src/components/PortfolioCard/PortfolioCard';
-
+import { SettingsPage } from '../Settings/SettingsPage'; // <-- Adjust the path if you saved it in a different folder!
+import { TemplatesPage } from '../Templates/TemplatesPage';
 // /* ======================================================
 //    SUB-COMPONENT: PortfolioCard
 //    ====================================================== */
@@ -473,9 +476,10 @@ import { PortfolioCard } from '@/src/components/PortfolioCard/PortfolioCard';
 interface DashboardPageProps {
   portfolios: Portfolio[];
   onUpload: (file: File) => void;
-  onEdit: (id: string) => void;
+  onEdit: (id: string, template?: string) => void;
   onView: (id: string) => void;
   onDelete: (id: string) => void;
+  
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -490,6 +494,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolios' | 'templates' | 'settings'>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('Modern');
+
+  // 👇 NEW STATE FOR THE MODAL 👇
+  const [templateActionModal, setTemplateActionModal] = useState<string | null>(null);
 
   // Filter portfolios based on search
   const filteredPortfolios = portfolios.filter(p => 
@@ -520,7 +528,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <h1 className="text-xl font-bold tracking-tight">PortfoliAI</h1>
         </div>
 
-        <nav className="flex-1 space-y-1">
+        {/* <nav className="flex-1 space-y-1">
           {NAV_ITEMS.map(({ key, icon: Icon, label }) => (
             <button
               key={key}
@@ -536,7 +544,28 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               {label}
             </button>
           ))}
-        </nav>
+        </nav> */}
+
+        <nav className="flex-1 space-y-2 pt-4">
+          {NAV_ITEMS.map(({ key, icon: Icon, label }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={cn(
+                'w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200',
+                activeTab === key
+                  ? 'bg-primary/10 text-primary font-bold' // 👈 Soft tint, perfect contrast!
+                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground' // 👈 Semantic inactive states
+              )}
+            >
+              <Icon 
+                size={20} 
+                className={activeTab === key ? "text-primary" : "text-muted-foreground"} 
+              />
+              {label}
+            </button>
+          ))}
+          </nav>
 
         <Button variant="ghost" className="justify-start text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30" onClick={logout}>
           Logout
@@ -571,6 +600,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               src={user?.profilePicture || `https://ui-avatars.com/api/?name=${user?.name}&background=random`} 
               alt={user?.name} 
               className="size-9 rounded-full border-2 border-primary/10"
+              referrerPolicy="no-referrer"
               />
             </div>
           </div>
@@ -616,8 +646,100 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               )}
             </>
           )}
+
+          {/* 👇 NEW SETTINGS TAB 👇 */}
+          {activeTab === 'settings' && (
+            <SettingsPage />
+          )}
+
+          {/* 👇 NEW TEMPLATES TAB (Placeholder) 👇 */}
+{/* ================= TEMPLATES TAB ================= */}
+          {/* {activeTab === 'templates' && (
+            <TemplatesPage 
+              selectedTemplate={selectedTemplate} 
+              onSelect={(templateId) => {
+                setSelectedTemplate(templateId);
+                fileInputRef.current?.click(); // 👈 Triggers the file upload instantly!
+              }} 
+            />
+          )} */}
+
+          {activeTab === 'templates' && (
+            <TemplatesPage 
+              selectedTemplate={selectedTemplate} 
+              onSelect={(templateId) => {
+                setSelectedTemplate(templateId);
+                // 👇 If they have portfolios, show the modal. Otherwise, just open file upload!
+                if (portfolios.length > 0) {
+                  setTemplateActionModal(templateId);
+                } else {
+                  fileInputRef.current?.click();
+                }
+              }} 
+            />
+          )}          
+
         </div>
       </main>
+
+      {/* =========================================================
+          👇 NEW TEMPLATE SELECTION MODAL 👇
+          ========================================================= */}
+      {templateActionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-6">
+            
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-xl font-bold">Use {templateActionModal} Template</h3>
+                <p className="text-sm text-muted-foreground mt-1">How would you like to apply this template?</p>
+              </div>
+              <button onClick={() => setTemplateActionModal(null)} className="p-1 hover:bg-secondary rounded-full text-muted-foreground transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Option 1: Upload a fresh resume */}
+              <Button 
+                className="w-full justify-start h-12 text-base shadow-sm" 
+                onClick={() => {
+                  setTemplateActionModal(null);
+                  fileInputRef.current?.click();
+                }}
+              >
+                <Plus size={18} className="mr-3" /> Upload New Resume
+              </Button>
+              
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border"></span></div>
+                <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground font-bold">Or apply to existing</span></div>
+              </div>
+
+              {/* Option 2: Apply to an existing portfolio */}
+              <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                {portfolios.map(p => (
+                  <button
+                    key={p.id}
+                    className="w-full text-left px-4 py-3 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all flex items-center justify-between group"
+                    onClick={() => {
+                      setTemplateActionModal(null);
+                      // 👇 Passes the portfolio ID AND the newly selected template to the App!
+                      onEdit(p.id, templateActionModal); 
+                    }}
+                  >
+                    <span className="font-medium text-sm truncate pr-4">{p.name}</span>
+                    <ArrowRight size={16} className="text-primary opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+
     </div>
   );
 };

@@ -139,7 +139,9 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  // app.use(express.json());
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   /* --------------------
      Health Check
@@ -289,6 +291,7 @@ async function startServer() {
       res.status(500).json({ error: error.message });
     }
   });
+
 
   // Login (REAL + MOCK)
   app.post("/api/auth/login", async (req, res) => {
@@ -515,6 +518,98 @@ async function startServer() {
     }
   });
 
+    /* ======================================================
+     UPDATION OF PROFILE DETAILS  (AUTH REQUIRED)
+     ====================================================== */
+     /* ======================================================
+     USER PROFILE ROUTES (AUTH REQUIRED)
+     ========================================================= */
+  app.put("/api/user/profile", authenticateToken, async (req: any, res) => {
+    const { name, email, profilePicture, currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    try {
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
+
+      // 1. Check if they are trying to change their email to one that is taken
+      if (email && email !== user.email) {
+        const existingEmail = await User.findOne({ email });
+        if (existingEmail) {
+          return res.status(400).json({ error: "That email is already in use by another account." });
+        }
+        user.email = email;
+      }
+
+      // 2. Update standard profile fields
+      if (name) user.name = name;
+      if (profilePicture) user.profilePicture = profilePicture;
+
+      // 3. Handle Password Updates securely
+      if (newPassword) {
+        if (!user.password) {
+          // They signed in with Google/GitHub originally and never had a password
+          user.password = await bcrypt.hash(newPassword, 10);
+        } else {
+          // They have a password, so they must provide the correct current password
+          if (!currentPassword) {
+            return res.status(400).json({ error: "Current password is required to set a new one." });
+          }
+          const isMatch = await bcrypt.compare(currentPassword, user.password);
+          if (!isMatch) {
+            return res.status(400).json({ error: "Incorrect current password." });
+          }
+          user.password = await bcrypt.hash(newPassword, 10);
+        }
+      }
+
+      await user.save();
+
+      // 4. Issue a fresh JWT in case their email changed
+      const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, {
+        expiresIn: "7d",
+      });
+
+      res.json({
+        message: "Profile updated successfully",
+        user: { id: user._id, email: user.email, name: user.name, profilePicture: user.profilePicture },
+        token,
+      });
+    } catch (error: any) {
+      console.error("Profile Update Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  /**================================================================
+   *                     EMAIL AVALIBILTY CHECK
+   ==================================================================*/
+
+  // Check Email Availability (Real-time settings check)
+  app.get("/api/user/check-email/:email", authenticateToken, async (req: any, res) => {
+    const emailToCheck = req.params.email.toLowerCase().trim();
+    const currentUserId = req.user.id;
+
+    try {
+      const existingUser = await User.findOne({ email: emailToCheck });
+
+      if (existingUser) {
+        // If it belongs to the current user, it's technically "available" to them
+        if (existingUser._id.toString() === currentUserId) {
+          return res.json({ available: true });
+        }
+        // It belongs to someone else!
+        return res.json({ available: false });
+      }
+
+      // No one has it
+      res.json({ available: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+
   /* ======================================================
      PORTFOLIO ROUTES (AUTH REQUIRED)
      ====================================================== */
@@ -532,9 +627,35 @@ async function startServer() {
     }
   });
 
-  // CREATE portfolio (always draft)
+  // // CREATE portfolio (always draft)
+  // app.post("/api/portfolios", authenticateToken, async (req: any, res) => {
+  //   const { name, data, template } = req.body;
+
+  //   try {
+  //     if (!name || !data) {
+  //       return res.status(400).json({ error: "Invalid portfolio data" });
+  //     }
+
+  //     const slug = await generateUniqueSlug(name);
+
+  //     const portfolio = await Portfolio.create({
+  //       userId: req.user.id,
+  //       name,
+  //       data,
+  //       template: template || "Modern",
+  //       status: status  || "draft", // 👈 IMPORTANT: start as draft
+  //       slug,
+  //     });
+
+  //     res.json({ success: true, portfolio });
+  //   } catch (error: any) {
+  //     res.status(500).json({ error: error.message });
+  //   }
+  // });
+
+  // CREATE portfolio 
   app.post("/api/portfolios", authenticateToken, async (req: any, res) => {
-    const { name, data, template } = req.body;
+    const { name, data, template, status } = req.body; // ✅ Extract status
 
     try {
       if (!name || !data) {
@@ -548,11 +669,11 @@ async function startServer() {
         name,
         data,
         template: template || "Modern",
-        status: "draft", // 👈 IMPORTANT: start as draft
+        status: status || "draft", // ✅ Use provided status, or default to draft
         slug,
       });
 
-      res.json({ success: true, portfolio });
+            res.json({ success: true, portfolio });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

@@ -63,6 +63,8 @@ const AppContent: React.FC = () => {
   const [status, setStatus] = useState('Initializing...');
   const [error, setError] = useState<string | null>(null);
 
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+
 
   /* ======================================================
    URL ROUTING LOGIC (for deep-linking)
@@ -478,13 +480,17 @@ const AppContent: React.FC = () => {
 
         {view === 'landing' && (
           <motion.div key="landing">
-            <LandingPage onStart={() => setView('auth')} />
+            <LandingPage onStart={(mode) => {
+                setAuthMode(mode || 'register'); // 👈 Save the requested mode
+                setView('auth');
+              }} />
           </motion.div>
         )}
 
         {view === 'auth' && (
           <motion.div key="auth">
-            <AuthPage onAuth={() => setView('dashboard')} />
+            <AuthPage onAuth={() => setView('dashboard')} 
+              initialMode={authMode}/>
           </motion.div>
         )}
 
@@ -493,13 +499,14 @@ const AppContent: React.FC = () => {
             <DashboardPage
               portfolios={portfolios}
               onUpload={handleUpload}
-              onEdit={(id) => {
+             onEdit={(id: string, newTemplate?: string) => {
                 const p = portfolios.find(p => p.id === id);
                 if (!p) return;
 
                 setSelectedPortfolioId(p.id);
                 setPortfolioData(p.data);
-                setSelectedTheme(p.theme);
+                // 👇 2. If newTemplate exists, use it! Otherwise fallback to the saved theme.
+                setSelectedTheme(newTemplate || p.theme); 
                 setSelectedSlug(p.slug || '');
                 setView('editor');
               }}
