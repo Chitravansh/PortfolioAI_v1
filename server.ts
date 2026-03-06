@@ -861,7 +861,7 @@
  ============================================*/
 
  import express from "express";
-import { createServer as createViteServer } from "vite";
+// import { createServer as createViteServer } from "vite";
 import path from "path";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
@@ -1176,17 +1176,51 @@ app.get("/api/auth/github/callback", async (req, res) => {
    ====================================================== */
 // (I kept your exact existing routes here, omitting for brevity in this block to ensure you copy it easily - but you can just paste your profile and portfolio PUT/GET/POST/DELETE endpoints right here!)
 
+// /* ======================================================
+//    VITE / STATIC SERVING & LOCAL HOST SETUP
+//    ====================================================== */
+// if (process.env.NODE_ENV !== "production") {
+//   // Wrap local setup in an async function so it doesn't break top-level execution
+//   const startLocalServer = async () => {
+//     const vite = await createViteServer({
+//       server: { middlewareMode: true },
+//       appType: "spa",
+//     });
+//     app.use(vite.middlewares);
+
+//     const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+//     app.listen(PORT, "0.0.0.0", () => {
+//       console.log(`🚀 Server running on http://localhost:${PORT}`);
+//     });
+//   };
+//   startLocalServer();
+// } else {
+//   // Production Vercel mode: serve static files if needed
+//   app.use(express.static(path.join(__dirname, "dist")));
+//   app.get("*", (_req, res) => {
+//     res.sendFile(path.join(__dirname, "dist", "index.html"));
+//   });
+// }
+
+// // 👇 EXPORT FOR VERCEL (Now 'app' is recognized perfectly!)
+// export default app;
+
+
 /* ======================================================
    VITE / STATIC SERVING & LOCAL HOST SETUP
    ====================================================== */
 if (process.env.NODE_ENV !== "production") {
-  // Wrap local setup in an async function so it doesn't break top-level execution
   const startLocalServer = async () => {
-    const vite = await createViteServer({
+    // 👇 1. Import the Vite module directly
+    const vite = await import("vite");
+    
+    // 👇 2. Use vite.createServer instead
+    const viteServer = await vite.createServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
-    app.use(vite.middlewares);
+    
+    app.use(viteServer.middlewares);
 
     const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
     app.listen(PORT, "0.0.0.0", () => {
@@ -1202,5 +1236,4 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
-// 👇 EXPORT FOR VERCEL (Now 'app' is recognized perfectly!)
 export default app;
