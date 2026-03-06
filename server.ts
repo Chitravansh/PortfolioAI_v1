@@ -1757,6 +1757,22 @@ app.get("/api/public/portfolio/:slug", async (req, res) => {
   res.json(portfolio);
 });
 
+// DELETE (REPAIRED)
+app.delete("/api/portfolios/:id", authenticateToken, async (req: any, res) => {
+  try {
+    const deleted = await Portfolio.findOneAndDelete({ 
+      _id: req.params.id, 
+      userId: req.user.id // Ensures users can only delete THEIR OWN
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ error: "Portfolio not found or unauthorized" });
+    }
+
+    res.json({ success: true, message: "Deleted successfully" });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
 /* ======================================================
    Local vs Production Serving
    ====================================================== */
