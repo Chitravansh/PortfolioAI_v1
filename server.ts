@@ -871,6 +871,11 @@ import crypto from "crypto";
 import slugify from "slugify";
 import nodemailer from "nodemailer";
 
+// 👇 ADD THESE THREE LINES EXACTLY HERE
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 dotenv.config();
 
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/portfoliai";
