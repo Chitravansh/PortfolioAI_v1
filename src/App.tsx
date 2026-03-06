@@ -53,6 +53,7 @@ const AppContent: React.FC = () => {
   /* --------------------
      App State
      -------------------- */
+     
   const [view, setView] = useState<
     'landing' | 'auth' | 'dashboard' | 'scanning' | 'editor' | 'public'
   >('landing');
