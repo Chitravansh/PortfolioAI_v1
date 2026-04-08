@@ -1744,17 +1744,60 @@ app.post("/api/portfolios", authenticateToken, async (req: any, res) => {
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
-app.put("/api/portfolios/:id", authenticateToken, async (req: any, res) => {
-  try {
-    const portfolio = await Portfolio.findOneAndUpdate({ _id: req.params.id, userId: req.user.id }, req.body, { new: true });
-    res.json({ success: true, portfolio });
-  } catch (err: any) { res.status(500).json({ error: err.message }); }
-});
+// app.put("/api/portfolios/:id", authenticateToken, async (req: any, res) => {
+//   try {
+//     const portfolio = await Portfolio.findOneAndUpdate({ _id: req.params.id, userId: req.user.id }, req.body, { new: true });
+//     res.json({ success: true, portfolio });
+//   } catch (err: any) { res.status(500).json({ error: err.message }); }
+// });
 
 app.get("/api/public/portfolio/:slug", async (req, res) => {
   const portfolio = await Portfolio.findOne({ slug: req.params.slug, status: "active" });
   if (!portfolio) return res.status(404).json({ error: "Portfolio not found" });
   res.json(portfolio);
+});
+
+app.put("/api/portfolios/:id", authenticateToken, async (req: any, res) => {
+  try {
+    console.log("BODY:", req.body);
+
+    const { name, data, template, status, slug } = req.body;
+
+    const update: any = {};
+
+    if (name) update.name = name;
+    if (data) update.data = data;
+    if (template) update.template = template;
+    if (status) update.status = status;
+
+    if (slug) {
+      const cleanSlug = slugify(slug, { lower: true, strict: true });
+
+      const existing = await Portfolio.findOne({ slug: cleanSlug });
+
+      if (existing && existing._id.toString() !== req.params.id) {
+        return res.status(409).json({ error: "Slug already taken" });
+      }
+
+      update.slug = cleanSlug;
+    }
+
+    const portfolio = await Portfolio.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user.id },
+      update,
+      { new: true }
+    );
+
+    if (!portfolio) {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    console.log("UPDATED:", portfolio.status, portfolio.slug);
+
+    res.json({ success: true, portfolio });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // DELETE (REPAIRED)
