@@ -25,8 +25,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
         </div>
         <div className="hidden md:flex items-center gap-8">
           <nav className="flex gap-8 text-sm font-medium text-slate-600 dark:text-slate-300">
-            <a href="#" className="hover:text-primary">Features</a>
-            <a href="#" className="hover:text-primary">How it Works</a>
+            {/* <a href="#" className="hover:text-primary">Features</a>
+            <a href="#" className="hover:text-primary">How it Works</a> */}
             <a href="#" className="hover:text-primary">Pricing</a>
           </nav>
           <div className="flex items-center gap-3">
@@ -58,7 +58,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             <Upload size={24} />
             Upload Resume
           </Button>
-          <Button variant="outline" className="h-14 px-10 text-lg">View Samples</Button>
+         {/* <Button variant="outline" className="h-14 px-10 text-lg">View Samples</Button>  */}
         </div>
 
         <motion.div 
